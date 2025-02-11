@@ -1,0 +1,37 @@
+services:
+  php:
+    build:
+      context: ./
+      dockerfile: php/Dockerfile
+      args:
+        - UID=${PHP_UID:-1000}
+        - GID=${PHP_GID:-1000}
+    tty: true
+    volumes:
+      - ../:/app
+      - ./php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    restart: on-failure
+
+  composer:
+    build:
+      context: ./
+      dockerfile: php/Dockerfile
+      args:
+        - UID=${PHP_UID:-1000}
+        - GID=${PHP_GID:-1000}
+    volumes:
+      - ../:/app
+    command: composer install
+
+  mysql:
+    image: mysql:9.2.0
+    ports:
+      - "3316:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASS:-root}"
+      MYSQL_USER: "${DB_USER:-user}"
+      MYSQL_PASSWORD: "${DB_PASS:-password}"
+      MYSQL_DATABASE: "${DATABASE:-importTest}"
+    volumes:
+      - ./db/data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
