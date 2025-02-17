@@ -4,6 +4,18 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # default headers in the stock import file
+    # The keys are the StockFileColumnEnum values, and the values are the column names from the file in snake_case format
+    csv_stock_import.default_headers:
+        code: "product_code"
+        name: "product_name"
+        description: "product_description"
+        stock: "stock"
+        cost: "cost_in_gbp"
+        discontinued: "discontinued"
+
+    # butch size for saving entities on import file
+    app.entity.storage.batch.size: 1000
 
 services:
     # default configuration for services in *this* file
@@ -22,3 +34,31 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # default file importer interface realization
+    App\Service\Importer\FileImporterInterface: '@App\Service\Importer\FileImporter'
+
+    # default file parser interface realization
+    App\Service\Parser\FileParserInterface: '@App\Service\Parser\FileParser'
+
+    # service of the class responsible for file headers for importing stocks
+    # headers from the application parameters for the current file type are passed to it
+    app.stock.import.file.headers:
+        class: App\ValueObject\FileHeaders
+        arguments:
+            - '%csv_stock_import.default_headers%'
+
+    # service of the stock file import storage
+    app.stock.import.storage:
+        class: App\Service\EntityStorage\DbEntityStorage
+        arguments:
+            - '@App\Service\EntityFactory\ProductEntityFactory'
+
+    # stocks file importer.
+    # based on the common FileImporter, but with its own specific arguments
+    app.stock.import.importer:
+        parent: 'App\Service\Importer\FileImporterInterface'
+        arguments:
+            - '@App\Service\RowValidator\StockCsvRowValidator'
+            - '@App\Service\FileReader\CsvFileReader'
+            - '@app.stock.import.storage'
